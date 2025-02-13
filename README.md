@@ -1,12 +1,9 @@
-# genome annotation - Synteny - Ds computation - changepoint analysis - whole genome alignments 
+# EASYstrata - Genome annotation - Synteny - d<sub>S</sub> computation - Changepoint analysis 
 ====================================================================================
-
-# TO DO: 
-	fill this readme 
 
 # Requirements
 
-This software is suitable only linux-like systems  (Unfortunately not Windows or MAC) 
+This software is suitable only in linux-like systems (Unfortunately not Windows or MAC) 
 
 # Table of content 
 
@@ -14,509 +11,306 @@ This software is suitable only linux-like systems  (Unfortunately not Windows or
    * [Installation](#installation)
    * [Before-launching-the-workflow](#before-launching-the-workflow)
    * [How to use](#how-to-use)
-	   * [From genome annotation to strata inference](#from-genome-annotation-to-strata-inference)
-	   * [Genome annotation only](#genome-annotation-only)
-	   * [Synteny and strata inference from existing data](#synteny-and-strata-inference-from-existing-data)
-	   * [Restart at any step](#restart-at-any-step) 
+        * [Summary table of options](#summary-table-of-options)
    * [Input data](#input-data)
-   * [Example input data](#example-input-data)
-   * [Details of the worfklow and results](#details-of-the-workflow-and-results)
-   * [Output files](#output-files)
+        * [Basic input](#basic-input)
+        * [Input for TE prediction](#input-for-te-prediction)
+        * [Input for gene prediction](#input-for-gene-prediction)
+   * [Details of the worfklow and outputs](#details-of-the-worfklow-and-outputs)
+        * [Operations of step I: TE and gene prediction](#operations-of-step-i-te-and-gene-prediction)
+        * [Operations of step II: Identify synteny blocks and rearragements](#operations-of-step-ii-identify-synteny-blocks-and-rearragements)
+        * [Operations of step III: Plot d<sub>S</sub> along the genome](#operations-of-step-iii-plot-ds-along-the-genome)
+        * [Operations of step IV: Perform changepoint analysis to identify evolutionary strata](#operations-of-step-iv-perform-changepoint-analysis-to-identify-evolutionary-strata)
+   * [Working examples](#working-examples)
 
 
 # Purpose:
 ##  sets of scripts to : 
-[I - Perform TE and gene prediction](#I---Perform-TE-and-gene-prediction)
+[I - Perform TE and gene prediction](##operations-of-step-i:-te-and-gene-prediction)
 
-[II - Identify synteny blocks and rearragements](#II---Identify-synteny-blocks-and-rearragements)
+[II - Identify synteny blocks and rearragements](##operations-of-step-ii:-identify-synteny-blocks-and-rearragements)
 
-[III - Plot dS along the genome](#III---Plot-dS-along-the-genome)
+[III - Plot d<sub>S</sub> along the genome](##operations-of-step-iii:-Plot-ds-along-the-genomee)
 
-[IV - Perform changepoint analysis to identify evolutionary strata](#IV---Perform-changepoint-analysis-to-identify-evolutionary-strata)
+[IV - Perform changepoint analysis to identify evolutionary strata](##operations-of-step-iv:-perform-changepoint-analysis-to-identify-evolutionary-strata)
 
 <img src="https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig1.png" width = "490" heigth = "490">
 
 
-Installation: 
--------
+# Installation: 
 
 - [Installation instructions](INSTALL/INSTALL.md)
 
 
+# Before launching the workflow
 
-# Before Launching the workflow
+Clone the workflow, then please work from within it to preserve the architecture.
 
-After cloning the pipeline, please, work from within it to preserve the architecture  
+We recommend that you clone the pipeline ***for each of your new project*** and work within it, and to keep all projects separated otherwise it will be difficult to recover your results.   
 
-We recommend that you clone the pipeline ***for each of your new project*** and work within it.   
+All options and full paths to input files **must** be set in the **config** file provided in : `config/config` .
 
-Keep all project separated otherwise it will be difficult to recover your results.   
+PLEASE, carefully read the user guide below before any attempt at running the workflow.
 
-
-All options and full path to input files **must** be set in the **config** file provided in : `config/config` .
-
-PLEASE, carefully read the user guide below before any attempte at running the workflow
+Note that this workflow uses several softwares and packages, notably **BREAKER**, **TSEBRA**, **GeneSpace**, **PAML**, **R mcp**. We recommend that you read their corresponding manuals before launching the workflow.
 
 
 # How to use: 
 
-### In short : 
+The first step is to provide the path to your input files and choose settings in the [config file](config/config). An example config file is provided [here](https://github.com/QuentinRougemont/EASYstrata/blob/main/example_data/example.config)
 
-simply run:
+To launch the workflow, simply run:
 ```
-./master.sh --help to see all options 
-```
-
-The script provides several options depending on what you want: 
-
--o 1: to perform all analyses (TE+gene prediction, GeneSpace, single copy orthogls inference between X/Y,  ds, evoluationary strata inference)
- 
--o 2: to perform TE and gene prediction, as well as synteny analysis (no dS or Strata inference)
-
--o 3: to perform synteny analysis (from GeneSpace) and subsequent analysis 
-
--o 4: to perform only d*S* and subsequent analysis 
-
--o 5: to only do only perform GeneSpace/Gene Synteny + Whole Genome Synteny 
-
--o 6: to only predict TE and genes
-
--o 7: to perform only the changepoint analysis
-
--o 8: to only perform the plots after dS computations
-
-
-## Detailed use cases
-
-as described above the workflow is simply run with the command:
-```
-./master.sh -o X #with X an option from 1 to 7. 
+./master.sh -o X #with X an option from 1 to 8. 
 ```
 
-each option and their requirement in the config file are described below :
+There are several options which allow you to choose which steps of the workflow you wish to run. This allows the workflow run from any step in the process. In case of bug you may restart it from whenever it crashes (after fixing the bug) and it should work smoothly.
 
-an example config file is provided [here](https://github.com/QuentinRougemont/EASYstrata/blob/main/example_data/example.config)
+```
+./master.sh --help #to see all options 
+```
 
+```./master.sh -o 1 2>&1 |tee log```
 
-### From genome annotation to strata inference
-
-basically this means running the whole workflow.  
-
-to do so run : 
-
-```./master.sh -o1 2>&1 |tee log```
-
-this will:
-
-*	 Perform TE annotation using **repeatmodeller** (de-novo prediction) and **repeatMasker**
-*	 Perform gene prediction on the softmasked genome using **BRAKER** (with or without RNAseq). 
-*	 Evaluate the quality of the gene prediction (with **BUSCO** mostly)
-*	 Run **GeneSpace** between your genomes (and eventual ancestral genome) to infer broad pattern of synteny including inference of single copy orthologs from **orthofinder**  
-*	Run **paml** to estimate synonymous divergence between the sequences/region of interests
-*	Perform various plots (circos plot, ds along the genome, ideogram, etc) 
-*	Infer the most likely number of evolutionary strata using a changepoint analysis
+**All steps:** performs all steps of the workflow, i.e. gene prediction, synteny analysis with GeneSpace including single copy orthologs inference between sex/mating type chromosomes,  synonymous divergence (d<sub>S</sub>) computation, evolutionary strata inference and production of various plots
 
 
-### other usefull option: 
+The following options allow you to run only certain parts of the workflow.
 
-* **Genome annotation only**
+```./master.sh -o 2 2>&1 |tee log```
 
-to simply perform genome annotation (gene and TE) run :
-```./master.sh -o 6 2>&1 |tee log```
-
-NOTE: if you already have a softmasked genome simply set :  
-
-**annotateTE="NO"** in the config file and this step will be skipped
-
-
-
-### Synteny and strata inference from existing data
-
-in case you already have a pair of genome (fasta format) along with their gene prediction (gff):    
+**Steps I and II:** performs only gene prediction and synteny analysis with GeneSpace (no d<sub>S</sub> computation or evolutionary strata inference)
 
 ```./master.sh -o 3 2>&1 |tee log```
 
-This will perform all steps appart from the gene prediction.  
-
-### dS strata inference from existing data
-
-in case you already have a pair of genome (fasta format) along with their gene prediction (gff) and the dS computed from previous step.
+**Steps II to IV:** performs synteny analysis with GeneSpace and subsequent analyses : useful if you already have annotated your genome (either from running this pipeline or any other annotation tools)
 
 ```./master.sh -o 4 2>&1 |tee log```
 
-This will perform all steps after the dS.  
+**Steps III to IV:** performs d<sub>S</sub> computation and subsequent analysis : useful if you already ran the synteny analysis with GeneSpace, and for customizing the plots produced at step III
 
-Mostly usefull for debugging  
+```./master.sh -o 5 2>&1 |tee log```
 
-### Only for synteny analysis 
+**Step II:** performs only the synteny analysis with GeneSpace 
 
-in case you already have a pair of genome (fasta format) along with their gene prediction (gff):
+```./master.sh -o 6 2>&1 |tee log```
 
-```./master.sh -o 4 2>&1 |tee log```
-
-This will only run GeneSpace and minimap and perform some plots.
-
-Mostly usefull for debugging or if you are not interested in Strata.
-
-
-
-### changepoint only 
-
-run simply:  
+**Step I:** performs only gene prediction
 
 ```./master.sh -o 7 2>&1 |tee log```
 
-this is usefull to explore various parameter settings in the MCP analysis. 
-For instance you may want to use prior in the MCP (see below) or tweak the order of the scaffolds. 
-
-### plots only:
-
-run simply:  
+**Step IV(G and H):** performs only evolutionary strata inference and the production of various plots: useful if you already ran the synteny analysis with GeneSpace and the d<sub>S</sub> computation with PAML. This option is useful and recommanded to explore various parameter settings in the MCP analysis, for instance adding priors or tweaking the order of the scaffolds. 
 
 ```./master.sh -o 8 2>&1 |tee log```
 
-this is usefull to make only the plot after the dS computation, for exemple, you may want to change some options in the R plot after a first pass analysis with default parameters.
+**Step IV(H):** performs only the plots subsequent to d<sub>S</sub> computation: useful if you already ran the rest of the workflow and want to customize your plots
 
+### Summary table of options
+| Option: | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|:----:| ---| --- | --- | --- | --- | --- | --- | --- |
+| I.Gene prediction | X | X |   |   |   | X |   |   |
+| II.Orthology and synteny (GeneSpace & Minimap2)| X | X | X |   | X |   |   |   |
+| II.Synteny plots | X |   | X |   |   |   |   | X |
+| III.d<sub>S</sub> computation + plots | X |   | X | X |   |   |   |   |
+| IV.Evolutionary strata inference | X |   | X | X |   |   | X |   |
+| IV.Evolutionary strata plots | X |   | X | X |   |   | X |X   |
 
+The different steps of the worflow are detailed [below](#details-of-the-worfklow-and-outputs)
 
-### Restart at any step 
+# Input data
 
-the worflow is designed to work at any step in the process. In case of bug you can restart it from whenever it crashes (after fixing the bug) and this should work smoothly.
+**/!\ The input required will vary strongly based on which steps of the workflow you want to perform.**
+Several files are **compulsory** 
 
+Again, all input data, including full path to input files, should be provided in the [**config file**](https://github.com/QuentinRougemont/EASYstrata/blob/main/config/config)
 
+### Basic input
+all options
+* **Input genome(s)** - compulsory: This may be one genome assembly containing both sex/mating type chromosomes, or **ideally** two separate haplotype assemblies containing each one of the sex/mating-type chromosomes.
+* **list of scaffolds** - compulsory: names of the contigs/scaffolds/chromosomes composing the sex/mating-type chromosomes.
+* **ancestral genome** - optional but highly recommended: The genome assembly of a species used as a proxy for the ancestral state. This will allow to plot d<sub>S</sub> along 'ancestral' gene order, and to infer more accurately single copy orthologs.
+* **ancestral gene prediction** - compulsory with ancestral genome: gene prediction associated with the ancestral genome 
 
+#### Warning: names of fasta and contigs/scaffolds/chromosomes
+We recommend you use short names for your genome assemblies and avoid any special characters apart from underscore.
+*example:* species-1.fasta will not be valid in GeneSpace. => Use **species1.fasta** instead.
 
-## Input data 
+For chromosome/contig/scaffold, you  **MUST** use standardized IDs including the species name, and avoid any special characters apart from underscore.  
+example: **species1_chr1** or **species1_contigX** or **species1_scaffoldZ**
+**otherwise the code will failed during renaming steps**
 
-**/!\ the number of input will vary strongly depending on the analysis you want to perform.**
-several files are **Compulsory** 
+### Input for TE prediction
+options 1,2,6 if your input genomes are not already softmasked
+* **TE database** - compulsory: the name of the TE database (some are available online depending on your taxon) 
+* **NCBI taxon** - compulsory: a taxon name for NCBI (used with repeatmasker)  
+* **TE bed files** -  optional: a pair of bed files containing TE for your region of interest if already available (will be displayed on the circos plots)
 
-**1 - genome assemblies:**
-Your **input data** may be
-\- one genome assembly containing both sex/mating type chromosomes
+### Input for gene prediction
+options 1,2,6 if your input genomes are not already annotated
+* **BUSCO lineage name** - compulsory: name of the BUSCO lineage corresponding to your species (the list of busco lineages is available with busco --list-lineage)
+* **RNAseq** - optional: RNAseq data for each genome, will improve BRAKER annotation  
+* **Protein database** - optional: a database of proteins from related species. Alternatively, orthoDB12 can be used (downloaded automatically)
+* **orthoDB12 lineage name** - optional: one of "Metazoa" "Vertebrata" "Viridiplantae" "Arthropoda" "Eukaryota" "Fungi" "Alveolata"
 
-\- or **ideally:** two separate haplotypes assemblies containing each one of the sex/mating type chromosomes.
+Full details on the options in config file are listed in [config folder](https://github.com/QuentinRougemont/EASYstrata/blob/main/config/config_details.md)
+For an example of input files, we provide an [example data folder](https://github.com/QuentinRougemont/EASYstrata/blob/main/example_data)
 
-**Warning names of fasta and contigs/scaffold/chromosomes :**
-we recommend to use short name for each of your genome assemblies name and avoid any special characters appart from underscore.
+# Details of the worfklow and outputs
 
-**For instance:**
-species-1.fasta will not be valid in GeneSpace. => Use **species1.fasta** instead.
+## list of operations and tools
+| __Operation__                     |  __Tools__                         |  __data type__  | 
+|:---------------------------------:|:------------------------------:|:-----------:| 
+| __I.A.read trimming__                |  Trimmomatic                   | RNAseq         | 
+| __I.A.read mapping__                 |  gmap/gsnap                    | RNAseq          | 
+| __I.A.sorting read__                 |  samtools                      | RNAseq        |
+| __I.A.mapping quality assement__     |  samtools + R                  | RNAseq        |
+| __I.B.TE detection and softmasking__ |  RepeatModeler + RepeadMasker  | genome assembly |
+| __I.C.genome annotation__            |  BRAKER + tsebra               | genome assembly + protein + database |
+| __I.C.quality assessment__           |  BUSCO + Blast + Inter Pro     | genome prediction |
+| __II.D1.whole genome alignement__       |  minimap2                      | genome assemblies |
+| __II.D1.gene microsynteny__            |  R                      | single copy orthologs |
+| __II.D2.Synteny and orthogroups__              |  GeneSpace (including OrthoFinder/MCScan) | gene prediction and proteins |
+| __III.E.cds alignement__               |  muscle + translatorX          | gene prediction (single copy orthologs) | 
+| __III.F.d<sub>S</sub> computation__               |  paml                          | CDS alignment |
+| __III.F. d<sub>S</sub> plot/CIRCOS plot__          |  R                             | Ds and genome information |
+| __IV.G.changepoint analysis__         |  R                      | d<sub>S</sub> values and gene order |
 
-For the chromosome/contig/scaffold ids we recommand a standard naming including the Species name within it without any thing else than alhpanumeric character.  
-\- example: **species1_chr1** or **species1_contigX** or **species1_scaffoldZ**
+## Operations of step I: TE and gene prediction
 
-**2 - other input data** 
-additional input data will be highly dependent on the analysis you want to perform (full workflow or not).
-These must be specified in the [**config file**](https://github.com/QuentinRougemont/EASYstrata/blob/main/config/config) and will typically include:  
+### A\. Alignment of RNA-seq data (optional)
 
-* 2.1 - **ancestral genome**  optional but highly recommended: the link to an ancestral genome to plot the gene order - ideal to infer more accurately single copy orthologs  
-* 2.2 - **ancestral gff**  optional but highly recommanded:  the gene prediction associated with the ancestral genome 
-* 2.3 - **BUSCO lineage name** : compulsory for genome annotation: the name of the BUSCO lineage from your species (available through busco --list-lineage)) 
+:pencil: Corresponding script: `00_scripts/launch_rnaseq.sh`
 
-**for genome annotation:**  
-
-* 2.4 - **RNAseq** data for each genome (optional): to improve BRAKER annotation  (can also be bam files)  
-* 2.5 - **Proteins for annotation (optional)** : if no protein data are available we will use orthoDB12  (downloaded automatically)
-* 2.6 - **orthoDB12 species name** : a lineage species name among: 
- "Metazoa" "Vertebrata" "Viridiplantae" "Arthropoda" "Eukaryota" "Fungi" "Alveolata"
-
-**for TE prediction:**  
-
-* 2.7 - **TE database** : compulsory for genome annotation if genome not softmasked already: the name of the TE database (some are available online depending on your taxon) 
-* 2.8 - **NCBI taxon** : compulsory: a taxon name for NCBI (used with repeatmasker)  
-* 2.9 - **TE bed files** :  optional: a pairs of bed file containing TE for your region of interest if already available (to display on circos plots)
-
-**for evolutionary strata - circos plot - ideogram - etc** 
-* 2.10 -  **scaffold.txt**: a tab sepearate file containing the genome name, and scaffold ids of the ancestral genome.  
-
-for mor on the format needed see [example data folder](https://github.com/QuentinRougemont/EASYstrata/blob/main/example_data) 
-
-
-##  Full config file details:
-
-
-| option in config | description |
-| --- | --- |
-| *genome1* | **Compulsory:** Full path to the assembly of the genome or haplotype you wish to analyse. |
-| *haplotype1* | **Compulsory:** Name of the genome1 to be used as a /contig/scaffold/chromosome basename |
-| \[*genome2*\] | **Optional:** Full path to the assembly of the second haplotype you wish to analyse. Only for the case where you have two haplotypes, each containing one of the sex/mating type chromosomes. |
-| \[*haplotype2*\] | **Compulsory:** Name of the second haplotype. This can be a basename of all chromosome if a second assembly is avaiable, or the name of the scaffold/contig/chromosomes corresponding to the sex/MAT chromosome (e.g. species_chrY) |
-| annotate | **Compulsory:** a string "YES"/"NO" stating wether genome should be annotated or not|
-| *RelatedProt* | **Optional:** Full path to a fasta file containing protein sequences to be used for gene prediction. |
-| \[*RNAseqlist*\] | **Optional:**: Full path to a '.txt' file containing the list of RNA-seq data files. |
-| \[*bamlist1*\] | **Optional:**. Full path to a .txt file containing the list of bam files for *genome1* (alignment of RNA-seq data onto the fasta of *genome 1*). |
-| \[*bamlist2*\] | **Optional:** with option *b* and if *genome2* is given. Full path to a .txt file containing the list of bam files for genome2 (alignment of RNA-seq data onto the fasta of *genome 2*). |
-| \[*orthoDBspecies*\] | **Compulsory:** "Metazoa" "Vertebrata" "Viridiplantae" "Arthropoda" "Eukaryota" "Fungi" "Alveolata". Will use a database from **orthoDB** for gene prediction. |
-| *fungus* | **Compulsory:** "YES" or "NO" (default), whether your species is a fungus. |
-| annotateTE | **Compulsory:** a string "YES"/"NO" stating wether genome should be annotated or not|
-| *TEdatabase* | **Compulsory for annotation of TE:** Full path to a database of TE for your species/genus, used in TE prediction, in fasta format. |
-| *ncbi_species* | **Compulsory for annotation of TE:** Name of the ncbi species, used in TE prediction. ==list available [here](https://www.ncbi.nlm.nih.gov/Taxonomy/Browser/wwwtax.cgi)== |
-| \[*gtf1*\] | **Optional**. Full path to a .gtf file for an existing gene prediction on *genome1*. |
-| \[*gtf2*\] | **Optional** Full path to a .gtf file for an  existing gene prediction on *genome2*. |
-| *busco_lineage* | Lineage used for **busco** analysis. You can access the list of available lineages by typing `busco --list-dataset`. |
-| *interpro* | YES or NO (default), whether **interproscan** quality check of the genome annotation should be performed. Warning: this can take up to several days for a big dataset. |
-| \[*ancestral_genome*\] | Compulsory if *ancestral* is set as "outgroup". Full path to the genome of the species used as proxy for the ancestral state. |
-| \[*ancestral_gff*\] | Compulsory if *ancestral* is set as "outgroup". Full path to the gff (genome annotation) of the species used as proxy for the ancestral state. |
-| *scaffolds* | Full path to the list of focal scaffolds (i.e. the scaffolds composing the sex / mating type chromosomes). |
-
-
-# PART BELOW TO BE UPDATED : 
-
-
-# Details of the worfklow and results
-
-## I - Perform TE and gene prediction
-
-## RNAseq alignment - TE masking - Gene prediction - Quality assessment
-
-### Parameters set in config
-
-==Give examples of files for RNAseqlist and bamlist HERE==
-
-### Options
-
-**(*a*) - Align RNA & Annotate:**  
-Will perform alignment of provided RNA-seq data and use it as additional information for genome annotation.
-
-**(*b*) - Annotate, use BAM of RNA**  
-Will use provided BAM of already aligned RNA-seq data and use it as additional information for genome annotation.
-
-**(*c*) - Annotate, no RNA**  
-Will perform genome annotation without using RNA information.
-
-**(*d*) - Skip**  
-If you have already annotated your genome, will use provided gtf for the following steps, effectively skipping genome annotation.
-
-## Operations of step I
-
-### 1\. Alignment of RNA-seq data (only with option *a*)
-
-Corresponding script: `00_scripts/launch_rnaseq.sh`
-
-- Reads trimming using **trimmomatic**
-
-The script will detect whether the data is Single-End or Paired-End and launch trimmomatic, then count the number of retained reads.
-
+- Reads trimming using **trimmomatic**, automatic detecting whether the data is Single-End or Paired-End
 - Creation of database for **gsnap** using **gmap**
 - Alignment using **gsnap**
+  :pencil: Corresponding scripts: `00_scripts/03_gsnap_SE.sh` for Single-End or `00_scripts/03_gsnap_SE.sh` for Paired-End
+- Mapping quality assessment and plot (sequencing depth and MAPQ)
+  plots and output: `haplo1/04_mapped/Depth/` and `haplo2/04_mapped/Depth`
 
-Corresponding scripts: `00_scripts/03_gsnap_PE.sh` for PE ; `00_scripts/03_gsnap_SE.sh` for SE
+![depth.png](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/depth.png)
+**Figure 1:** example RNAseq depth
 
-- Mapping quality assessment
+### B\. TE discovery and masking
 
-Sequencing depth and MAPQ along the genome will be computed and plotted. The resulting plots can be found in ==XXX/Depth/== and ==XXX/mapq/== .
+:pencil: Corresponding script: `00_scripts/launch_step05_to_08.sh`
 
-==Insert example plot here==
+- *De novo* repeat identification using **repeatmodeler** on the input genome(s)
+- Genome masking using **repeatmasker** with ncbi TE Library, and custom dataset if provided
 
-### 2\. TE discovery and masking
+### C\. Genome annotation, quality assessment and filtering
 
-Corresponding script: `00_scripts/launch_step05_to_08.sh`
+:pencil: Corresponding script: `00_scripts/06_braker.sh`
 
-- *De novo* repeat identification using **repeatmodeler** on the input genome(s) to be annotated
-- Genome masking using **repeatmasker** with known TE libraries
-
-### 3\. Genome annotation, quality assessment and filtering
-
-Corresponding script: ./00_scripts/06_braker.sh
-
-- Five successive rounds of gene prediction based on protein database, using **braker**
-    
-- One round of gene prediction using RNA-seq data, using **braker** (only with options *a* and *b*)
-    
+- Five successive rounds of gene prediction based on OrthoDB (and custom protein database if provided) with **BRAKER**
+- **If RNA-seq data was provided:** one round of gene prediction based on RNA-seq data with **BRAKER** 
 - Quality assessment and reports production for each round of gene prediction
-    
+  This uses the raw **BRAKER** hintsfile, and **BUSCO** (:pencil: corresponding script: `00_scripts/07_busco_after_braker.sh`)  
+  The report includes number of genes, number of introns per gene, gene support, number of complete genes and various histograms useful for error checking.
+- **If RNA-seq data was provided**: combination of the best protein-based gene model and the RNA-seq-based gene model using **TSEBRA**
+  **Warning:** TSEBRA parameters *intron_support* and *stasto_support* are set to 0 in this workflow (default in TSEBRA: 1 and 2 respectively). This means that only overlapping genes between the two gene models will be filtered. You can change this parameter and others to adjust to your desired level of stringency in the TSEBRA config file: `config/default.cfg` Please read the [TSEBRA manual](https://github.com/Gaius-Augustus/TSEBRA) before running the script.
+- **If no RNA-seq data was provided:** genome annotation is set as the best protein-based gene model, as evaluated with **BUSCO**
+- Reshaping of genoma annotation: scaffold name is inserted in gene names (facilitating dowonstream analyses) and the longest transcript of each gene is kept (necessary for single copy ortholog identification)
+  :pencil: Corresponding script: `00_scripts/08_braker_reshaping.sh`
+- Final genome annotation quality assessment using **Blast** against **Uniprot** database, **BUSCO**, and optionally **InterProScan**
+  **Warning** running **InterProScan** is time-consuming and can take up to several days. By default the option is turned off in this workflow. It can be turned on in the config file.
 
-Two tools can be used at this stage for quality assessment:  
-\- **Busco** (corresponding script: `00_scripts/07_busco_after_braker.sh`)  
-\- **Braker** report on the raw hintsfile  
-This report includes number of genes, number of introns per gene, gene support, number of complete genes and various histograms useful for error checking.
 
-- Combination of protein-based and RNA-seq-based gene models using **TSEBRA** (only with options *a* and *b*)
+## Operations of step II: Identify synteny blocks and rearragements
 
-Please read the [TSEBRA manual](https://github.com/Gaius-Augustus/TSEBRA) before running the script.  
-The best round of protein-based gene prediction and the RNA-seq-based gene prediction are given as input in TSEBRA.  
-Warning: TSEBRA parameters *intron_support* and *stasto_support* are set to 0 in this workflow (default in TSEBRA: 1 and 2 respectively). This means that only overlapping genes between the two gene models will be filtered. You can change this parameter and others to adjust to your desired level of stringency in the TSEBRA config file: `config/default.cfg`
+### D-1\. Minimizer alignment and plots of target region
 
-- Final genome annotation reshaping
-
-**if RNAseq is used:** The final genome annotation  is the output from TSEBRA.  
-**without RNAseq*:** The final genome annotation is the best protein-based braker round, as evaluated with busco.
-
-Corresponding script: `00_scripts/08_braker_reshaping.sh`  
-The genes will be renamed to insert the scaffold name for clarity in downstream analyses.  
-Because the next steps in the workflow involve single copy ortholog identification, only the longest transcript is kept for each gene.
-
-- Final genome annotation quality assessment
-
-Two more in-depth tools can be used at this stage for quality assessment: (==\+ busco on final genome pred ?==)  
-\- **Blast** against **Uniprot**  
-If you wish to skip this, comment l.295 of the script `00_scripts/08_braker_reshaping.sh`  
-\- **InterProScan** (if option interpro is set to "YES" in the config file and Blast against Uniprot successfully ran)  
-This tool is more time-consuming.
-
-## II - Identify synteny blocks and rearragements
-
-will enable to infer gene order for dS interpretation 
-
-## Input of step II
-
-### Parameters set in config ==in yellow parameters to be set==
-
-|     |     |
-| --- | --- |
-| **option in config** | **description** |
-| *==ancestral==* | "chromosome" or "outgroup", whether the sequence used as proxy for the ancestral state is one of the sex / mating type chromosomes or an ougroup provided below. |
-| ==\[*ancestral_chromosome_scaffolds*\]== | Compulsory if *ancestral* is set as "chromosome". Full path to the list of scaffolds of the chromosome used as proxy for ancestral state. |
-| \[*==outgroup_orthofinder==*\] | Advised if *ancestral* is set as "chromosome". Full path to a list of genomes to be used as outgroups in OrthoFinder only. |
-| ==\[*ancestral_outgroup_scaffolds*\]== | Compulsory if *ancestral* is set as "outgroup". Full path to the list of focal scaffolds for the outgroup used as proxy for ancestral state. |
-
-==Give examples of files for scaffolds, ancestral_chromosome_scaffolds, outgroup_orthofinder and ancestral_outgroup_scaffolds ?==
-
-### Operations of step II
-
-### 4a. Minimizer alignment and plots of target region
-
-Corresponding script: `00_scripts/11_run_genesSpace_paml_ideogram.sh`
+:pencil: Corresponding script: `00_scripts/11_run_genesSpace_paml_ideogram.sh`
 
 - Alignment between the two haplotypes using **minimap2**
-
-If you provided as input two haplotypes containing each one of the sex/mating type chromosomes, the whole haplotypes will be aligned.  
-If you provided one genome containing both sex/mating type chromosomes, only the corresponding focal scaffolds (as indicated with option *scaffold*) will be aligned.
-
-- Alignment between the two haplotypes and an outgroup genome used as proxy for ancestral state if you have one (option B), using **minimap2**
-    
-- Construction of whole genome dotplot using **pafR** (only with two haplotypes as input)
-    
+  If the scaffolds of interest were provided in the *scaffold* table, only those will be aligned. Otherwise, the whole haplotypes will be aligned.  
+- **If ancestral genome was provided: alignment between the two haplotypes and ancestral genome using **minimap2**
 - Construction of synteny plot on the focal scaffolds using **pafR**
-    
-ex: minimap based divergence along the mating type chromosomes :
+- **If no scaffold table was provided:** construction of whole genome dotplot using **pafR**
 
 ![Fig2.png](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig2.png)
+**Figure 2: pafr** synteny plot based on **minimap** between the focal scaffolds
 
-ex: minimap based whole genome alignment : 
-	
 ![Fig3.png](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig3.png)
+**Figure 3:** dotplot between the two haplotypes
 
-
-
-### 4b. Ortholog reconstruction
+### D-2\. Ortholog reconstruction
 
 - Launching of **GeneSpace**
-
-In short, this will:  
-\- Identify single copy orthologs with **OrthoFinder**  
-\- Construct a dotplot and a riparian plot of whole genome (only with two haplotypes as input) \[==GeneSapce==\]  
-\- Construct a riparian plot on focal scaffolds \[==GeneSpace==\]  
+\- Identification of single copy orthologs with **OrthoFinder**  
+\- **If no scaffold table was provided:** Production of dotplot and a riparian plot for the whole genome 
+\- Production of a riparian plot on focal scaffolds  
 For more information, consult the [GeneSpace readme](https://github.com/jtlovell/GENESPACE).
-
-ex: Synteny plot from GeneSpace
+- Circos plots production using the R package **circlize**, between the two haplotypes, and the ancestral genome (if provided).
+- Micro-synteny plot production using the R package **Rideogram**, examples [below](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig10.png)
+:pencil: Corresponding script: `00_scripts/Rscripts/04.ideogram.R`
 
 ![Fig4.png](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig4.png)
+**Figure 4:** Synteny plot by **GeneSpace** showing gene synteny between the ancestral genome (ancestral_sp) and the two mating types of *Microbotryum lychnidis-dioiciae*
 
 
-# III - Plot dS along the genome
+## Operations of step III: Plot dS along the genome
 
-## STEP III - Compute and plot dS - Plot ideogram and rearrangements
+### E\. Single copy orthologs alignment
 
-## Input of step III
+- Align all coding sequences from the focal scaffolds using **muscle** from within **TranslatorX**
 
-### Parameters set in config
+### F\. d<sub>S</sub> calculation and plotting
 
-Same as step II (see above).
-
-## Operations of step III
-
-### 5\. Single copy orthologs alignment
-
-Align all coding sequences from the focal scaffolds.
-
-- **TranslatorX**
-- **muscle**
-
-### 6\. dS calculation and plotting
-
-- Calculation of d~S~ (& dN) using **PAML**
-
-**NOTE ON GENE NAME**
-PAML will fail if special characters occur in the input fasta file, or **if the length of a gene name in the fasta header is above 32 characters.** 
-To prevent this, we implemented an automatic renaming procedure to shorten character names and remove special characters.  
-- Plotting dS values using a custom R script  
-    
-
-Corresponding script: `00_scripts/Rscripts/03_plot_paml.R`  
-
-dS values are plotted along the focal scaffolds, and, if 2 haplotypes were given as input, along the whole genome.  
-The gene order will be that of the genome used as proxy for the ancestral state: either one of the two sex/mating type chromosomes, or an outgroup (see option *ancestral*).  
-It is possible to modify the R script to adapt the plotting options to your needs (for instance position and direction of scaffolds).
-
-Ex: Ds plot : 
+- Calculation of d<sub>S</sub> (and d<sub>N</sub>) using **PAML**
+**Note: PAML fails if special characters occur in the input fasta file, or if the length of a gene name is above 32 characters. To prevent this, we implemented an automatic renaming procedure to shorten character names and remove special characters. After PAML, genes are converted back to their original names, so this should be transparent to users.**
+- Plotting of d<sub>S</sub> values on the focal scaffolds (and on the whole genome if no scaffold table was provided), using a custom R script.
+:pencil: Corresponding script: `00_scripts/Rscripts/03_plot_paml.R`
+If an ancestral genome was provided, d<sub>S</sub> is plotted along that genome, otherwise it will be plotted along one of the two sex/mating type chromosomes.  
+**Note: It is possible to modify this R script to adapt the plotting options to your needs (for instance position and direction of scaffolds).**
 
 ![Fig5.png](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig5.png)
+**Figure 5:** A) d<sub>S</sub> values along the position in the ancestral chromosomes. B) d<sub>S</sub> values along the ancestral gene order after inverting the chromosomes and removing the large autosomal part on contig 8.
+C) and D) gene rank as a function of ancestral gene order, in genome1 and genome2 respectively. 
 
+- Plotting of circos plots of the focal scaffolds, with links between single copy orthologs genes, using the R package **circlize**
+d<sub>S</sub> Corresponding script: `00_scripts/Rscripts/05_plot_circos.R` 
+TE and gene density bed files can be provided as arguments. By default fused autosome will be plotted but these can be removed from the contig list.
+**Note: It is possible to modify this R script to adapt the plotting options to your needs (for instance position and direction of scaffolds).**
 
-### === - Plot circos (==step III==)
+put **figure4 panel B** here
+**Figure 6:** Circos plot between the ancestral genome and one of the focal haplotype (left part) and circos plot between the two focal haplotypes (mating types). The most external track displays the position of gene of interest (red, green and light blue) and the centromeres (in purple). The middle track in lightblue displays gene density. The most interior track in green displays TE density. Red and darkblue interior links display single copy orthologs links. Note that the same figure is produced, with inner links colored according to discrete quantile values of d<sub>S</sub> [example here](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Figure12.svg)
 
-Corresponding script: `00_scripts/Rscripts/05_plot_circos.R [options]`  
+## Operations of step IV: Perform changepoint analysis to identify evolutionary strata
 
-Construction of a circos plot of the focal scaffolds, tracing links between their single copy ortholog genes, using **circlize**.  
-* If TE info are available these can also be provided as arguments.
+### G\. Changepoint analyses
 
-* gene density can be extracted from the bed file in genespace and be plotted if provided as arguments
+:pencil: Corresponding script: '00_scripts/Rscripts/06.MCP_model_comp.R`
 
-It is possible to modify the R script to adapt the plotting options to your needs (for instance position and direction of scaffolds).
+** Warning: This step is automatically performed with default gene order. However, it is unlikely that the default gene order is correct, so we strongly suggest that you consult the results of the workflow, especially the d<sub>S</sub> plot. Once you have deciphered clear hypotheses regarding scaffold order and orientation, you may change them manually in the "scaffold" table, then relaunch the workflow at step IV:
+```
+bash ./master.sh -o 7
+```
 
-By default any fused autosome will be plotted but these can be removed from the contig list
-
-See **figure4 panel B** above for example.
-
-# IV - Perform changepoint analysis to identify evolutionary strata
-
-## Step IV
-
-### 1\. Changepoint analyses
-
-Before launching this step, we strongly suggest that you consult the results of the workflow, especially the dS plot. i
-
-Once you have deciphered clear hypotheses as to whether there are strata on your focal scaffolds, and where they occur, you can use the R script.
-
-`00_scripts/Rscripts/06.MCP_model_comp.R` to perform changepoint analyses on the dS, using **mcp**.
-
-To that end, you can automatically launch the code ```master.sh -o7``` and it will launch the MCP, producing several graph as well as colored ideogram according for each model infered by the MCP 
+- Launch of multiple change point (MCP) analysis based on the d<sub>S</sub> values, with the R package **mcp**
+This allows the automatic inference of evolutionary strata through the identification of regions with distinctively different levels of d<sub>S</sub>. Note that regions with low or zero d<sub>S</sub> on the leftmost and rigthmost extremities of the chromosomes of interest usuall correspond to the pseudo-autosomal regions and are therefore not true evolutionary strata.
+\- Running MCP analyses from 1 to 8 changepoints
+\- Plotting changepoints posterior distribution and models convergence
 
 ![Fig6.A.png](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig6.A.png)
-
-**Figure 6A:** Results from the changepoint analysis for 3  (panel A) to 8 changepoints (panel F) that will be automatically performed to infer evolutionary strata. Each changepoint panel displays the distribution of raw data (i.e., dS values as black dots) along with 25 draws from the joint posterior distribution (grey lines) and 95% highest density interval (red lines). Posterior distributions of the changepoints are shown in blue with one line for each chain. Note that in general the "strata" with zero dS value on the left most and rigth most side respectively will correspond to the PAR, not true evolutionary strata.  
-
-
-it is important to check the convergence of the runs for each parameters : 
-this will be perform automatically in our code resulting in these plots for each changepoint tested.
+**Figure 7:** Results from the changepoint analysis for 3 (panel A) to 8 changepoints (panel F). Each changepoint panel displays the distribution of d<sub>S</sub> values (black dots) along with 25 draws from the joint posterior distribution (grey lines) and 95% highest density interval (red lines). Posterior distributions of the changepoints are shown in blue with one line for each chain.
 
 ![Fig6.B.svg](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig6.B.svg)
+**Figure 8:** posterior fit of the model parameter and mixing of the chains. Here only 7-changepoint model posterior fit is shown.
 
-**Figure 6B:** posterior fit of the model parameter and mixing of the chains. Here only the values inferred for the 7-changepoint model are shown - the one with highest support.
-values for all other models are generated on the flye.
+- Export of summary tables
+The MCP analysis produces many useful information which are extracted and automatically exported in *.txt* tables:
 
-
-The MCP produced many usefull informations that will be extracted and automatically exported in *.txt* tables:
-
-* `modelX.chpt.txt`:  X = number of changepoint tested (from 1 to 9). 
-
-    These files is the output of the summary function from MCP. 
-    
-    It contains the following columns:
- 
+\- `modelX.chpt.txt` (with X being the number of changepoints tested, from 1 to 8): Contains the output of the summary function from MCP. 
+    The columns correspond to:
     1. name: name of the parameter (changepont and interval) 
-    2. mean: mean value of dS and interval (gene order based) 
-    3. lower/upper: lower and upper boundaries, 
-    4. Rhat: is the Gelman-Rubin convergence diagnostic which is often taken to be acceptable if <1.1. 
-    5. n.eff:  is the effective sample size computed using effectiveSize. Low effective sample sizes are also obvious as poor mixing in trace plots .
+    2. mean: mean value of d<sub>S</sub> and interval (based on gene order) 
+    3. lower/upper: lower and upper boundaries
+    4. Rhat: Gelman-Rubin convergence diagnostic which is often taken to be acceptable if <1.1
+    5. n.eff: effective sample size computed using effectiveSize. Low effective sample sizes can also be revealed by poor mixing in trace plots.
 
-* `modelchoice.txt` : 
-    This file contains info from the loo model choice operation 
-
-    It contains the following columns:
-
+\- `modelchoice.txt` : Contains information from the loo model choice operation.
+    The columns correspond to:
     1. elpd_diff 
     2. se_diff 
     3. elpd_loo 
@@ -525,125 +319,73 @@ The MCP produced many usefull informations that will be extracted and automatica
     6. se_p_loo looic 
     7. se_looic
 
-* `weights.txt` : 
-
-    This file contains the weights of each tested models
-    higher weights indicates higher supports.
+\- `weights.txt` : Contains the weights of each tested models. Higher weights indicates higher supports.
 
 
-* `HypothesisXstrata.txt` :  X = number of changepoint tested (from 1 to 9). 
+\- `HypothesisXstrata.txt` (with X being the number of changepoint tested, from 1 to 8): Contains results from hypothesis testing (BayesFactor and posterior probabilities aiming at testing differences among strata).
+    Differences in d<sub>S</sub> values among adjacent strata are tested, from left to right in the gene order. Both directionalities are tested, i.e. both the hypothesis that stratum 1 has higher d<sub>S</sub> than stratum 2, and the hypothesis that stratum 2 has higher d<sub>S</sub> than stratum 1 are tested.
 
-    These file contains results from hypothesis testing (BayesFactor and posterior probabilities aiming at testing difference among strata) 
+\- `classif.sX.$haplo1.$haplo2` (with X being the number of changepoint tested, from 1 to 8): Contains the assignment of single copy orthologs to strata
+    1. column1: gene name in the first haplotype 
+    2. column2: gene name in the second haplotype
+    3. column3: stratum of appartenance 
 
-    Here only difference in dS values among adjacent strata are tested when moving forward from the left to the right of the gene order. 
+\- `df.txt` : Contains a summary of all informations 
 
-    The two directionalyty of differences are tested, i.e.: 
-
-    "int_1 > int_2": the intercept is greater in strata 1 than 2. 
-    "int_1 < int_2": the intercept is greater in strata 2 than 1. 
-    
-    This is repeated for all comparison of adjacent interval for 1 to 9 changepoints.
-
-
-* `classif.sX.$haplo1.$haplo2` :   X = number of changepoint tested (from 1 to 9). 
-
-
-    A three column file containing the assignment of single copy orthologs to a strata :
-    1. column1: genes in $haplo1 
-
-    2. column2: genes in $haplo2 
-
-    3. column3: strata of appartenance 
-
-    These file are use to automatically color links in Ideograms. 
-
-* `df.txt` : a dataframe recaputilating all infos 
-
-
-## other output : 
-
-vio-boxplot with statistical tests. 
-
-here's an example for the two best model in the studied species: 
+### H\. Production of figures based on inferred evolutionary strata
+These figures are produced for each number of changepoints tested
+- Violin plot of the d<sub>S</sub> for each evolutionary strata inferred by the model with results of statistical tests
+- d<sub>S</sub> plot along the ancestral gene order, colored according to strata as inferred by the model
+- d<sub>S</sub> plot along the ancestral gene position, colored according to strata as inferred by the model
+- Ideograms between the ancestral genome and the haplotypes, colored according to strata as inferred by the model
+- Circos plots adding to the exterior track the genes colored according to the strata as inferred by the model
  
 ![Fig7.svg](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig7.svg)
 
-**Figure 7:** example violinboxplot for the two "most likely" models inferred by the loo analysis.
-By default plots are constructed for all models (from 1 to 9 changepoints). Default statiscal test from the ggstats plot package are used
+**Figure 9:** example violinboxplot for the two "most likely" models inferred by the loo analysis.
+By default plots are constructed for all models (from 1 to 8 changepoints). Default statiscal test from the ggstats plot package are used
 assuming parametric tests. 
-
-
-
-dS colored by strata along the ancestral gene order:
 
 ![Fig8.png](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig8.png)
 
-**Figure 9:** dS values plotted along the ancestral gene order for all possible models from three to eight changepoints  
-each point is a gene dS value colored according to the strata of assignation. 
+**Figure 10:** d<sub>S</sub> values plotted along the ancestral gene order for all possible models from three to eight changepoints  
+each point is a gene d<sub>S</sub> value colored according to the strata of assignation. 
 
-dS colored by strata along the ancestral genome:
-
-automatically generated for each changepoint values: 
 ![Fig9.png](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig9.png)
 
-**Figure 8:** dS values plotted along the ancestral genome for all possible models from three to eight changepoints  
-each point is a gene dS value colored according to the strata of assignation
+**Figure 11:** d<sub>S</sub> values plotted along the ancestral genome for all possible models from three to eight changepoints  
+each point is a gene d<sub>S</sub> value colored according to the strata of assignation
 
-a posterior colored ideogram: 
-automatically generated for each changepoint values: 
 ![Fig10.png](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Fig10.png)
 
-**Figure10:**  example ideograms infered for the most likely models here. Links are colored according to their strata of appartenance. 
+**Figure 12:**  example ideograms infered for the most likely models here. Links are colored according to their strata of appartenance. 
+
+![Figure11.svg](https://github.com/QuentinRougemont/EASYstrata/blob/main/.pictures/Figure11.svg)
+
+**Figure 13:** circos plot with external links based on inferred strata
 
 
+# Working examples 
+##  1: RNAseq and ancestral genome 
 
+- [see exemple 1](example_data/example1.md)
 
+## 2: already mapped RNAseq and ancestral genome 
 
+- [see exemple 2](example_data/example2.md)
 
-# Options to run part of the workflow
+## 3: no RNAseq nor ancestral genome 
 
-If you wish to perform only part of the workflow or relaunch it from a given step, use option *\-o*
+- [see exemple 3](example_data/example3.md)
 
-`bash master.sh -o 2` : perform steps I and II  
-now if you have a gtf and and genome assembly (either from running this pipeline or any other annotation tools):
-`bash master.sh -o 3` ; perform steps II and III (if step I already ran successfully in a previous run)  
-`bash master.sh -o 4` : perform step III only (if steps I and II already ran successfully in a previous run)  
-`bash master.sh -o 5` : perform step II only (if step I already ran successfully in a previous run)  
-`bash master.sh -o 6` : perform step I only
-`bash master.sh -o 7`: perform step IV only
+## 4: already annotated genome  
 
+- [see exemple 4](example_data/example4.md)
 
+## 5: other use cases 
 
+describe here all possibles combinations 
 
-# --------------------------------------------------------------------------
+## 6: changepoint with priors
 
-# list of operations and tools
-
-
-| __Operation__                     |  __Tools__                         |  __data type__  | 
-|:---------------------------------:|:------------------------------:|:-----------:| 
-| __read trimming__                |  Trimmomatic                   | RNAseq         | 
-| __read mapping__                 |  gmap/gsnap                    | RNAseq          | 
-| __sorting read__                 |  samtools                      | RNAseq        |
-| __mapping quality assement__     |  samtools + R                  | RNAseq        |
-| __TE detection and softmasking__ |  RepeatModeler + RepeadMasker  | genome assembly |
-| __genome annotation__            |  Braker + tsebra               | genome assembly + protein + database |
-| __quality assessment__           |  Busco + Blast + Inter Pro     | genome prediction |
-| __Synteny and HOG__              |  GeneSpace (including OrthoFinder/MCScan) | gene prediction and proteins |
-| __cds alignement__               |  muscle + translatorX          | gene prediction (single copy orthologs) | 
-| __Ds computation__               |  paml                          | CDS alignment |
-| __Ds plot/CIRCOS plot__          |  R                             | Ds and genome information |
-| __whole genome alignemnt__       |  minimap2                      | genome assemblies |
-| __gene microsynteny__            |  R                      | single copy orthologs |
-| __changepoint analysis__         |  R                      | Ds values and gene order |
-
-
-
-This code has been tested with linux. 
-
-
-Normally, you should only run the script ```./master.sh```
-
-below we provided a description of what will be done at each steps.
-
-
+- [see example 6](example_data/example6.md)
